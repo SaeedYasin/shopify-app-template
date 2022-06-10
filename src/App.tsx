@@ -22,7 +22,7 @@ export default function App() {
       <AppBridgeProvider
         config={{
           apiKey: process.env.SHOPIFY_API_KEY,
-          host: new URL(location).searchParams.get("host"),
+          host: new URL(location.href).searchParams.get("host"),
           forceRedirect: true,
         }}
       >
@@ -51,7 +51,7 @@ function MyProvider({ children }) {
 export function userLoggedInFetch(app) {
   const fetchFunction = authenticatedFetch(app);
 
-  return async (uri, options) => {
+  return async (uri, options?) => {
     const response = await fetchFunction(uri, options);
 
     if (
