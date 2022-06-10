@@ -1,5 +1,8 @@
 {
-  "name": "shopify-app-node",
+  "name": "shopify-app-template-typescript",
+  "description": "Shopify App Template (Node) with TypeScript",
+  "author": "Batyr <dev@batyr.io>",
+  "homepage": "https://github.com/kanzitelli/shopify-app-template-typescript",
   "private": true,
   "scripts": {
     "build": "tsc && npm run build:client",
@@ -44,5 +47,13 @@
     "ts-node": "^10.8.1",
     "typescript": "^4.7.3",
     "vitest": "^0.10.5"
-  }
+  },
+  "keywords": [
+    "shopify",
+    "shopify-app",
+    "shopify-embedded-app",
+    "shopify-app-template",
+    "shopify-app-typescript"
+  ],
+  "license": "MIT"
 }
