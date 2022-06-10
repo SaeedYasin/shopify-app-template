@@ -36,13 +36,21 @@ Then copy `.env` file to the typescript project and remove the one you just crea
 
 _Note:_ `HOST` value will be auto-filled when you run the app.
 
-3. Run the app
+3. Go to your app's directory and install packages
+
+```sh
+cd shopify-app-ts && yarn
+```
+
+_Note_: You could see error `fatal: not a git repository (or any of the parent directories): .git` that comes from `husky install` command. Once you do `git init`, it will disappear.
+
+4. Run the app
 
 ```sh
 shopify app serve
 ```
 
-4. Install and start using the app by opening provided URL (from step 3) in your browser: _https://some-ngrok-subdomain-xxxx.ngrok.io/login?shop=your-shop-name.myshopify.com_
+5. Install and start using the app by opening provided URL (from step 4) in your browser: _https://some-ngrok-subdomain-xxxx.ngrok.io/login?shop=your-shop-name.myshopify.com_
 
 ## Deployment
 
@@ -52,7 +60,7 @@ So `Dockerfile` and `Docker Compose` with `https://` setup will be coming soon..
 
 ## Enhancements
 
-In the future, I am planning to create an advanced `shopify-app-starter` that will be powered by React Router, Mobx, a more opinionated structure, release-it, and other useful things.
+There are plans to create an advanced `shopify-app-starter` that will be powered by React Router, Mobx, a more opinionated structure, release-it, and other useful things.
 
 ## Motivation
 
