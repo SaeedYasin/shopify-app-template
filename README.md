@@ -44,13 +44,21 @@ cd shopify-app-ts && yarn
 
 _Note_: You could see error `fatal: not a git repository (or any of the parent directories): .git` that comes from `husky install` command. Once you do `git init`, it will disappear.
 
-4. Run the app
+4. Remove `.github` folder
+
+```sh
+rm -rf .github
+```
+
+It contains files from [original template](https://github.com/Shopify/shopify-app-template-node) that are not necessary when building an app.
+
+5. Run the app
 
 ```sh
 shopify app serve
 ```
 
-5. Install and start using the app by opening provided URL (from step 4) in your browser: _https://some-ngrok-subdomain-xxxx.ngrok.io/login?shop=your-shop-name.myshopify.com_
+Install and start using the app by opening provided URL in your browser: _https://some-ngrok-subdomain-xxxx.ngrok.io/login?shop=your-shop-name.myshopify.com_
 
 ## Deployment
 
