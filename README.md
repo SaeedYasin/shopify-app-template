@@ -19,7 +19,7 @@ The original template (with JavaScript) is [Shopify/shopify-app-template-node](h
 1. Clone the repo
 
 ```sh
-npx degit kanzitelli/shopify-app-template-typescript shopify-app-ts
+npx degit SaeedYasin/shopify-app-template shopify-app-ts
 ```
 
 2. Create Shopify app
@@ -39,20 +39,10 @@ _Note:_ `HOST` value will be auto-filled when you run the app.
 3. Go to your app's directory and install packages
 
 ```sh
-cd shopify-app-ts && yarn
+cd shopify-app-ts && pnpm i
 ```
 
-_Note_: You could see error `fatal: not a git repository (or any of the parent directories): .git` that comes from `husky install` command. Once you do `git init`, it will disappear.
-
-4. Remove `.github` folder
-
-```sh
-rm -rf .github
-```
-
-It contains files from [original template](https://github.com/Shopify/shopify-app-template-node) that are not necessary when building an app.
-
-5. Run the app
+4. Run the app
 
 ```sh
 shopify app serve
@@ -65,14 +55,6 @@ Install and start using the app by opening provided URL in your browser: _https:
 We will probably need to deploy it somewhere in the cloud when we are done with the app.
 
 So `Dockerfile` and `Docker Compose` with `https://` setup will be coming soon...
-
-## Enhancements
-
-There are plans to create an advanced `shopify-app-starter` that will be powered by React Router, Mobx, a more opinionated structure, release-it, and other useful things.
-
-## Motivation
-
-I started developing a Shopify app some time ago that uses NextJS and Koa, which are deprecated in favour of pure React App and Express. The codebase was primarily written using TS, and it was painful to see that Shopify doesn't provide a new template with TS setup. There is the [issue](https://github.com/Shopify/shopify-app-template-node/issues/690) since January 2022 where people ask for TS support but no luck so far. So that's how this repo was born. I tried to keep it as close as possible to the [original repo](https://github.com/Shopify/shopify-app-template-node) but with TypeScript support.
 
 ## License
 

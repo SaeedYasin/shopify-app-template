@@ -19,3 +19,6 @@ config/tunnel.pid
 
 # webpack build output
 dist/
+
+# pnpm
+pnpm-lock.yaml
