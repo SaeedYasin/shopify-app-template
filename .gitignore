@@ -22,3 +22,6 @@ dist/
 
 # pnpm
 pnpm-lock.yaml
+
+# prisma
+server/prisma/client/

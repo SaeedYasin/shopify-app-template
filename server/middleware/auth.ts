@@ -1,4 +1,5 @@
 import { Shopify } from "@shopify/shopify-api";
+import db from "../prisma/db.js";
 
 import topLevelAuthRedirect from "../helpers/top-level-auth-redirect.js";
 
@@ -49,6 +50,8 @@ export default function applyAuthMiddleware(app) {
       );
 
       const host = req.query.host;
+      await db.setShopifyShopScope(session.shop, session.scope);
+      console.log(`Setting shop ${session.shop} status as active`);
       app.set(
         "active-shopify-shops",
         Object.assign(app.get("active-shopify-shops"), {

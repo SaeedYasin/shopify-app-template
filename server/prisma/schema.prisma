@@ -1,0 +1,14 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model ShopifyShops {
+  shop   String  @id @unique
+  scope  String
+  active Boolean
+}

@@ -4,6 +4,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { Shopify, ApiVersion } from "@shopify/shopify-api";
 import "dotenv/config";
+import db from "./prisma/db.js";
 
 import applyAuthMiddleware from "./middleware/auth.js";
 import verifyRequest from "./middleware/verify-request.js";
@@ -25,12 +26,14 @@ Shopify.Context.initialize({
   SESSION_STORAGE: new Shopify.Session.MemorySessionStorage(),
 });
 
-// Storing the currently active shops in memory will force them to re-login when your server restarts. You should
-// persist this object in your app.
-const ACTIVE_SHOPIFY_SHOPS = {};
+// Storing the currently active shops in memory will force them to re-login when your server restarts.
+// You should persist this object in your app. --> prisma doing that now.
+const ACTIVE_SHOPIFY_SHOPS = await db.getActiveShopifyShopsDict();
 Shopify.Webhooks.Registry.addHandler("APP_UNINSTALLED", {
   path: "/webhooks",
   webhookHandler: async (topic, shop, body) => {
+    console.log(`Shop ${shop} has uninstalled the app`);
+    await db.setShopifyShopActive(shop, false);
     delete ACTIVE_SHOPIFY_SHOPS[shop];
   },
 });
@@ -40,6 +43,8 @@ export async function createServer(
   root = process.cwd(),
   isProd = process.env.NODE_ENV === "production"
 ) {
+  console.log("App started...");
+
   const app = express();
   app.set("top-level-oauth-cookie", TOP_LEVEL_OAUTH_COOKIE);
   app.set("active-shopify-shops", ACTIVE_SHOPIFY_SHOPS);
@@ -98,6 +103,7 @@ export async function createServer(
   app.use("/*", (req, res, next) => {
     const query = req.query as Record<string, string>;
     const { shop } = query;
+    console.log(`Processing request from ${shop}`);
 
     // Detect whether we need to reinstall the app, any request from Shopify will
     // include a shop in the query parameters.

@@ -36,6 +36,8 @@ Then copy `.env` file to the typescript project and remove the one you just crea
 
 _Note:_ `HOST` value will be auto-filled when you run the app.
 
+- Add your database connection URL as well in .env for DATABASE_URL env variable.
+
 3. Go to your app's directory and install packages
 
 ```sh
@@ -52,9 +54,10 @@ Install and start using the app by opening provided URL in your browser: _https:
 
 ## Deployment
 
-We will probably need to deploy it somewhere in the cloud when we are done with the app.
-
-So `Dockerfile` and `Docker Compose` with `https://` setup will be coming soon...
+- Deploy to any hosting service and configure your env variables on it and get its public URL.
+- Make sure to update your App URL and allowed redirect_uri in shopify partners dashboard.
+- Then using https://your-app-domain.com/login?shop=your-shop-name.myshopify.com you can install the app.
+- Keep in mind running `shopify app serve` will automatically override App URL with ngrok URL in partners dashboard.
 
 ## License
 
