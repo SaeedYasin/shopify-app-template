@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import { Shopify, ApiVersion } from "@shopify/shopify-api";
 import "dotenv/config";
 import shops from "./prisma/database/shops.js";
+import sessions from "./prisma/database/sessions.js";
 
 import applyAuthMiddleware from "./middleware/auth.js";
 import verifyRequest from "./middleware/verify-request.js";
@@ -22,11 +23,16 @@ Shopify.Context.initialize({
   HOST_NAME: process.env.HOST.replace(/https:\/\//, ""),
   API_VERSION: ApiVersion.April22,
   IS_EMBEDDED_APP: true,
-  // This should be replaced with your preferred storage strategy
-  SESSION_STORAGE: new Shopify.Session.MemorySessionStorage(),
+  // We persist active shops in the DB to make sure stores don't have
+  // to re-login when the server restarts.
+  SESSION_STORAGE: new Shopify.Session.CustomSessionStorage(
+    sessions.storeCallback,
+    sessions.loadCallback,
+    sessions.deleteCallback
+  ),
 });
 
-// We store active shops in the DB to make sure stores don't have
+// We persist active shops in the DB to make sure stores don't have
 // to re-login when the server restarts.
 const ACTIVE_SHOPIFY_SHOPS = await shops.getActiveShops();
 Shopify.Webhooks.Registry.addHandler("APP_UNINSTALLED", {
@@ -141,7 +147,7 @@ export async function createServer(
   app.use("/*", (req, res, next) => {
     const query = req.query as Record<string, string>;
     const { shop } = query;
-    console.log(`Processing request from ${shop}`);
+    if (shop) console.log(`Processing request from ${shop}`);
 
     // Detect whether we need to reinstall the app, any request from Shopify will
     // include a shop in the query parameters.

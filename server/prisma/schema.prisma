@@ -52,3 +52,11 @@ model ShopData {
 
   @@index([shop])
 }
+
+model Session {
+  id      String @id @unique
+  shop    String @unique
+  session String @db.Text
+
+  @@index([id])
+}

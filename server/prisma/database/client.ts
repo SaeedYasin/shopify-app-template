@@ -15,16 +15,15 @@ export async function tryCatch(cb: () => Promise<unknown>) {
   }
 }
 
-function processError(e: unknown) {
+function processError(e: Error) {
+  console.log(e);
   if (e instanceof Prisma.PrismaClientKnownRequestError) {
-    if (e.code === "P2002") {
+    if (e.code === "P2003") {
       return {
         code: e.code,
         msg: "There is a unique constraint violation",
-        prismaMsg: e.message,
       };
     }
   }
-  console.log(e);
   return { code: "UNKNOWN", msg: "Unknown error" };
 }
