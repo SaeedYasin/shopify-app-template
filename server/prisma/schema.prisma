@@ -7,8 +7,48 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model ShopifyShops {
-  shop   String  @id @unique
-  scope  String
-  active Boolean
+model Shop {
+  shop          String        @id @unique
+  scopes        String
+  isInstalled   Boolean
+  subscription  Subscription?
+  shopData      ShopData?
+  installedAt   DateTime      @default(now())
+  uninstalledAt DateTime?
+  installCount  Int           @default(0)
+
+  @@index([shop])
+}
+
+enum Plan {
+  TRIAL
+  PAID
+}
+
+model Subscription {
+  shop       String    @id @unique
+  Shop       Shop      @relation(fields: [shop], references: [shop], onDelete: Cascade)
+  plan       Plan      @default(TRIAL)
+  active     Boolean   @default(true)
+  trialDays  Int       @default(14)
+  createdAt  DateTime  @default(now())
+  upgradedAt DateTime?
+
+  @@index([shop])
+}
+
+model ShopData {
+  shop           String @id @unique
+  Shop           Shop   @relation(fields: [shop], references: [shop], onDelete: Cascade)
+  id             String @unique
+  name           String
+  ianaTimezone   String
+  email          String
+  url            String
+  currencyCode   String
+  primaryDomain  Json
+  plan           Json
+  billingAddress Json
+
+  @@index([shop])
 }

@@ -4,7 +4,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { Shopify, ApiVersion } from "@shopify/shopify-api";
 import "dotenv/config";
-import db from "./prisma/db.js";
+import shops from "./prisma/database/shops.js";
 
 import applyAuthMiddleware from "./middleware/auth.js";
 import verifyRequest from "./middleware/verify-request.js";
@@ -26,17 +26,55 @@ Shopify.Context.initialize({
   SESSION_STORAGE: new Shopify.Session.MemorySessionStorage(),
 });
 
-// Storing the currently active shops in memory will force them to re-login when your server restarts.
-// You should persist this object in your app. --> prisma doing that now.
-const ACTIVE_SHOPIFY_SHOPS = await db.getActiveShopifyShopsDict();
+// We store active shops in the DB to make sure stores don't have
+// to re-login when the server restarts.
+const ACTIVE_SHOPIFY_SHOPS = await shops.getActiveShops();
 Shopify.Webhooks.Registry.addHandler("APP_UNINSTALLED", {
   path: "/webhooks",
   webhookHandler: async (topic, shop, body) => {
-    console.log(`Shop ${shop} has uninstalled the app`);
-    await db.setShopifyShopActive(shop, false);
+    console.log(`Event: Uninstall on shop ${shop}`);
+    await shops.updateShop({
+      shop,
+      isInstalled: false,
+      uninstalledAt: new Date(),
+      subscription: {
+        update: {
+          active: false,
+        },
+      },
+    });
     delete ACTIVE_SHOPIFY_SHOPS[shop];
   },
 });
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+import prisma, { tryCatch } from "./prisma/database/client.js";
+const shop = "sylab-store2.myshopify.com";
+import { Shop } from "@prisma/client";
+
+// const data = {
+//   shop,
+//   isInstalled: false,
+//   // uninstalledAt: new Date(),
+//   scopes: "test",
+// };
+
+// console.log(
+//   await prisma.shop.create({
+//     data: {
+//       ...data,
+//       subscription: {
+//         create: {},
+//       },
+//     },
+//     include: {
+//       subscription: true,
+//     },
+//   })
+// );
+
+//////////////////////////////////////////////////////////////////////////////////////////////
 
 // export for test use only
 export async function createServer(
@@ -131,7 +169,7 @@ export async function createServer(
             port: 64999,
             clientPort: 64999,
           },
-          middlewareMode: "html",
+          middlewareMode: true,
         },
       })
     );

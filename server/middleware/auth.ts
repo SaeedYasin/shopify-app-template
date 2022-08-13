@@ -1,20 +1,23 @@
-import { Shopify } from "@shopify/shopify-api";
-import db from "../prisma/db.js";
+import { AuthQuery, SessionInterface, Shopify } from "@shopify/shopify-api";
+import shops from "../prisma/database/shops.js";
+import type { Express } from "express";
 
 import topLevelAuthRedirect from "../helpers/top-level-auth-redirect.js";
 
-export default function applyAuthMiddleware(app) {
+export default function applyAuthMiddleware(app: Express) {
   app.get("/auth", async (req, res) => {
     if (!req.signedCookies[app.get("top-level-oauth-cookie")]) {
       return res.redirect(
-        `/auth/toplevel?${new URLSearchParams(req.query).toString()}`
+        `/auth/toplevel?${new URLSearchParams(
+          req.query as Record<string, string>
+        ).toString()}`
       );
     }
 
     const redirectUrl = await Shopify.Auth.beginAuth(
       req,
       res,
-      req.query.shop,
+      (req.query as Record<string, string>).shop,
       "/auth/callback",
       app.get("use-online-tokens")
     );
@@ -46,19 +49,10 @@ export default function applyAuthMiddleware(app) {
       const session = await Shopify.Auth.validateAuthCallback(
         req,
         res,
-        req.query
+        req.query as unknown as AuthQuery
       );
 
       const host = req.query.host;
-      await db.setShopifyShopScope(session.shop, session.scope);
-      console.log(`Setting shop ${session.shop} status as active`);
-      app.set(
-        "active-shopify-shops",
-        Object.assign(app.get("active-shopify-shops"), {
-          [session.shop]: session.scope,
-        })
-      );
-
       const response = await Shopify.Webhooks.Registry.register({
         shop: session.shop,
         accessToken: session.accessToken,
@@ -71,6 +65,9 @@ export default function applyAuthMiddleware(app) {
           `Failed to register APP_UNINSTALLED webhook: ${response.result}`
         );
       }
+
+      // Update db and mark shop as active
+      await updateShopData(app, session);
 
       // Redirect to app with shop parameter upon auth
       res.redirect(`/?shop=${session.shop}&host=${host}`);
@@ -92,4 +89,126 @@ export default function applyAuthMiddleware(app) {
       }
     }
   });
+}
+
+export const GET_SHOP_DATA = `{
+  shop {
+    id
+    name
+    ianaTimezone
+    email
+    url
+    currencyCode
+    primaryDomain {
+      url
+      sslEnabled
+    }
+    plan {
+      displayName
+      partnerDevelopment
+      shopifyPlus
+    }
+    billingAddress {
+      name
+      company
+      city
+      country
+      phone
+    }
+  }
+}`;
+
+async function updateShopData(app, session: SessionInterface) {
+  const existingShop = await shops.getShop(session.shop);
+  console.log(`Get shop data returned: ${JSON.stringify(existingShop)}`);
+  let fetchShopData = true;
+  // const betaUsers = [""];
+
+  if (!existingShop) {
+    console.log(`Event: Install on new shop ${session.shop}`);
+    await shops.createShop({
+      shop: session.shop,
+      scopes: session.scope,
+      isInstalled: true,
+      installedAt: new Date(),
+      uninstalledAt: null,
+      installCount: 1,
+      // notifications: [],
+      // settings: { beta: betaUsers.includes(shop) ? true : false },
+    });
+
+    // Track install event
+    // analytics.track({
+    //   event: "install",
+    //   userId: shop,
+    // });
+  } else {
+    if (!!existingShop.shopData) {
+      fetchShopData = false;
+    }
+
+    if (!existingShop.isInstalled) {
+      // This is a REINSTALL
+      console.log(`Event: Reinstall on existing shop ${session.shop}`);
+      await shops.updateShop({
+        shop: session.shop,
+        scopes: session.scope,
+        isInstalled: true,
+        installedAt: new Date(),
+        uninstalledAt: null,
+        installCount: existingShop.installCount + 1,
+        // showOnboarding: true,
+        // settings: { beta: betaUsers.includes(shop) ? true : false },
+        subscription: {
+          update: {
+            active: true,
+          },
+        },
+      });
+
+      // Track reinstall event
+      // analytics.track({
+      //   event: "reinstall",
+      //   userId: shop,
+      // });
+    }
+  }
+
+  if (fetchShopData) {
+    const client = new Shopify.Clients.Graphql(
+      session.shop,
+      session.accessToken
+    );
+
+    // Track reauth event
+    // analytics.track({
+    //   event: "reauth",
+    //   userId: session.shop,
+    // });
+
+    const res = await client.query({ data: GET_SHOP_DATA });
+    const resBody = res?.body as any;
+
+    if (!resBody?.data?.shop) {
+      console.warn(`Missing shop data on ${session.shop}`);
+    } else {
+      const shopData = resBody.data.shop;
+      console.log("Got shops data", shopData);
+
+      await shops.updateShop({
+        shop: session.shop,
+        shopData: {
+          create: shopData,
+        },
+      });
+    }
+  }
+
+  // Save it in memory as well
+  app.set(
+    "active-shopify-shops",
+    Object.assign(app.get("active-shopify-shops"), {
+      [session.shop]: session.scope,
+    })
+  );
 }
