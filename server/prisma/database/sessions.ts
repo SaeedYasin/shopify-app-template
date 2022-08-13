@@ -5,6 +5,7 @@ export default {
   storeCallback,
   loadCallback,
   deleteCallback,
+  deleteSession,
 };
 
 async function storeCallback(session: SessionInterface) {
@@ -12,7 +13,7 @@ async function storeCallback(session: SessionInterface) {
   const { error } = await tryCatch(async () => {
     return await prisma.session.upsert({
       where: {
-        id: session.id,
+        shop: session.shop,
       },
       update: {
         id: session.id,
@@ -51,6 +52,19 @@ async function deleteCallback(id: string) {
     return await prisma.session.delete({
       where: {
         id,
+      },
+    });
+  });
+  if (error) return false;
+  return true;
+}
+
+async function deleteSession(shop: string) {
+  console.log(`deleteSession called with shop ${shop}`);
+  const { error } = await tryCatch(async () => {
+    return await prisma.session.delete({
+      where: {
+        shop,
       },
     });
   });

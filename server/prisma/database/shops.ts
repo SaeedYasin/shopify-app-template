@@ -2,27 +2,11 @@ import { Prisma } from "@prisma/client";
 import prisma, { tryCatch } from "./client.js";
 
 export default {
-  getActiveShops,
   getShop,
   createShop,
   updateShop,
+  deleteShop,
 };
-
-async function getActiveShops() {
-  const { data, error } = await tryCatch(async () => {
-    const shops = await prisma.shop.findMany({
-      where: {
-        isInstalled: true,
-      },
-    });
-    return shops.reduce((acc, e) => {
-      acc[e.shop] = e.scopes;
-      return acc;
-    }, {});
-  });
-  if (!error) return data as { string: string };
-  return {};
-}
 
 async function getShop(shop: string) {
   const { data, error } = await tryCatch(async () => {
@@ -37,11 +21,11 @@ async function getShop(shop: string) {
     });
   });
   if (!error) return data as Prisma.ShopCreateInput;
-  return null;
+  return undefined;
 }
 
 async function createShop(data: Prisma.ShopCreateInput) {
-  await tryCatch(async () => {
+  const { error } = await tryCatch(async () => {
     return await prisma.shop.create({
       data: {
         ...data,
@@ -51,10 +35,12 @@ async function createShop(data: Prisma.ShopCreateInput) {
       },
     });
   });
+  if (error) return false;
+  return true;
 }
 
 async function updateShop(data: Prisma.ShopUpdateInput) {
-  await tryCatch(async () => {
+  const { error } = await tryCatch(async () => {
     return await prisma.shop.update({
       where: {
         shop: data.shop as string,
@@ -62,4 +48,18 @@ async function updateShop(data: Prisma.ShopUpdateInput) {
       data,
     });
   });
+  if (error) return false;
+  return true;
+}
+
+async function deleteShop(shop: string) {
+  const { error } = await tryCatch(async () => {
+    return await prisma.shop.delete({
+      where: {
+        shop,
+      },
+    });
+  });
+  if (error) return false;
+  return true;
 }

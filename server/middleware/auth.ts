@@ -203,12 +203,4 @@ async function updateShopData(app, session: SessionInterface) {
       });
     }
   }
-
-  // Save it in memory as well
-  app.set(
-    "active-shopify-shops",
-    Object.assign(app.get("active-shopify-shops"), {
-      [session.shop]: session.scope,
-    })
-  );
 }

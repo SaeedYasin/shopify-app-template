@@ -4,11 +4,20 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { Shopify, ApiVersion } from "@shopify/shopify-api";
 import "dotenv/config";
+
+// Database
 import shops from "./prisma/database/shops.js";
 import sessions from "./prisma/database/sessions.js";
 
+// Middleware
 import applyAuthMiddleware from "./middleware/auth.js";
 import verifyRequest from "./middleware/verify-request.js";
+
+// Webhooks
+import gdprRoutes from "./webhooks/gdprRoutes.js";
+import gdpr from "./webhooks/gdprHandlers.js";
+import { hmacVerify } from "./webhooks/hmacVerify.js";
+import { uninstall } from "./webhooks/uninstall.js";
 
 const USE_ONLINE_TOKENS = true;
 const TOP_LEVEL_OAUTH_COOKIE = "shopify_top_level_oauth";
@@ -32,55 +41,29 @@ Shopify.Context.initialize({
   ),
 });
 
-// We persist active shops in the DB to make sure stores don't have
-// to re-login when the server restarts.
-const ACTIVE_SHOPIFY_SHOPS = await shops.getActiveShops();
-Shopify.Webhooks.Registry.addHandler("APP_UNINSTALLED", {
-  path: "/webhooks",
-  webhookHandler: async (topic, shop, body) => {
-    console.log(`Event: Uninstall on shop ${shop}`);
-    await shops.updateShop({
-      shop,
-      isInstalled: false,
-      uninstalledAt: new Date(),
-      subscription: {
-        update: {
-          active: false,
-        },
-      },
-    });
-    delete ACTIVE_SHOPIFY_SHOPS[shop];
+Shopify.Webhooks.Registry.addHandlers({
+  APP_UNINSTALLED: {
+    path: "/webhooks",
+    webhookHandler: async (_topic, shop, _body) => {
+      await uninstall(shop);
+    },
+  },
+  CUSTOMERS_DATA_REQUEST: {
+    path: "/gdpr/customers_data_request",
+    webhookHandler: async (topic, shop, body) =>
+      await gdpr.customerDataRequest(topic, shop, body),
+  },
+  CUSTOMERS_REDACT: {
+    path: "/gdpr/customers_redact",
+    webhookHandler: async (topic, shop, body) =>
+      await gdpr.customerRedact(topic, shop, body),
+  },
+  SHOP_REDACT: {
+    path: "/gdpr/shop_redact",
+    webhookHandler: async (topic, shop, body) =>
+      await gdpr.shopRedact(topic, shop, body),
   },
 });
-
-//////////////////////////////////////////////////////////////////////////////////////////////
-
-import prisma, { tryCatch } from "./prisma/database/client.js";
-const shop = "sylab-store2.myshopify.com";
-import { Shop } from "@prisma/client";
-
-// const data = {
-//   shop,
-//   isInstalled: false,
-//   // uninstalledAt: new Date(),
-//   scopes: "test",
-// };
-
-// console.log(
-//   await prisma.shop.create({
-//     data: {
-//       ...data,
-//       subscription: {
-//         create: {},
-//       },
-//     },
-//     include: {
-//       subscription: true,
-//     },
-//   })
-// );
-
-//////////////////////////////////////////////////////////////////////////////////////////////
 
 // export for test use only
 export async function createServer(
@@ -91,7 +74,6 @@ export async function createServer(
 
   const app = express();
   app.set("top-level-oauth-cookie", TOP_LEVEL_OAUTH_COOKIE);
-  app.set("active-shopify-shops", ACTIVE_SHOPIFY_SHOPS);
   app.set("use-online-tokens", USE_ONLINE_TOKENS);
 
   app.use(cookieParser(Shopify.Context.API_SECRET_KEY));
@@ -130,6 +112,7 @@ export async function createServer(
   });
 
   app.use(express.json());
+  app.use("/gdpr", hmacVerify, gdprRoutes);
 
   app.use((req, res, next) => {
     const shop = req.query.shop;
@@ -144,14 +127,15 @@ export async function createServer(
     next();
   });
 
-  app.use("/*", (req, res, next) => {
+  app.use("/*", async (req, res, next) => {
     const query = req.query as Record<string, string>;
     const { shop } = query;
     if (shop) console.log(`Processing request from ${shop}`);
 
     // Detect whether we need to reinstall the app, any request from Shopify will
     // include a shop in the query parameters.
-    if (app.get("active-shopify-shops")[shop] === undefined && shop) {
+    const activeShop = await shops.getShop(shop);
+    if ((!activeShop || !activeShop?.isInstalled) && shop) {
       res.redirect(`/auth?${new URLSearchParams(query).toString()}`);
     } else {
       next();
