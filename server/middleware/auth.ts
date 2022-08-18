@@ -18,8 +18,8 @@ export default function applyAuthMiddleware(app: Express) {
       req,
       res,
       (req.query as Record<string, string>).shop,
-      "/auth/callback",
-      app.get("use-online-tokens")
+      "/auth/token",
+      false
     );
 
     res.redirect(redirectUrl);
@@ -42,6 +42,24 @@ export default function applyAuthMiddleware(app: Express) {
         query: req.query,
       })
     );
+  });
+
+  app.get("/auth/token", async (req, res) => {
+    await Shopify.Auth.validateAuthCallback(
+      req,
+      res,
+      req.query as unknown as AuthQuery
+    );
+
+    const redirectUrl = await Shopify.Auth.beginAuth(
+      req,
+      res,
+      (req.query as Record<string, string>).shop,
+      "/auth/callback",
+      app.get("use-online-tokens")
+    );
+
+    res.redirect(redirectUrl);
   });
 
   app.get("/auth/callback", async (req, res) => {
@@ -91,7 +109,7 @@ export default function applyAuthMiddleware(app: Express) {
   });
 }
 
-export const GET_SHOP_DATA = `{
+const GET_SHOP_DATA = `{
   shop {
     id
     name
@@ -118,7 +136,7 @@ export const GET_SHOP_DATA = `{
   }
 }`;
 
-async function updateShopData(app, session: SessionInterface) {
+async function updateShopData(app: Express, session: SessionInterface) {
   const existingShop = await shops.getShop(session.shop);
   console.log(`Get shop data returned: ${JSON.stringify(existingShop)}`);
   let fetchShopData = true;
@@ -133,6 +151,7 @@ async function updateShopData(app, session: SessionInterface) {
       installedAt: new Date(),
       uninstalledAt: null,
       installCount: 1,
+      showOnboarding: true,
       // notifications: [],
       // settings: { beta: betaUsers.includes(shop) ? true : false },
     });
@@ -157,7 +176,7 @@ async function updateShopData(app, session: SessionInterface) {
         installedAt: new Date(),
         uninstalledAt: null,
         installCount: existingShop.installCount + 1,
-        // showOnboarding: true,
+        showOnboarding: true,
         // settings: { beta: betaUsers.includes(shop) ? true : false },
         subscription: {
           update: {
@@ -175,32 +194,36 @@ async function updateShopData(app, session: SessionInterface) {
   }
 
   if (fetchShopData) {
-    const client = new Shopify.Clients.Graphql(
-      session.shop,
-      session.accessToken
-    );
+    try {
+      const client = new Shopify.Clients.Graphql(
+        session.shop,
+        session.accessToken
+      );
 
-    // Track reauth event
-    // analytics.track({
-    //   event: "reauth",
-    //   userId: session.shop,
-    // });
+      // Track reauth event
+      // analytics.track({
+      //   event: "reauth",
+      //   userId: session.shop,
+      // });
 
-    const res = await client.query({ data: GET_SHOP_DATA });
-    const resBody = res?.body as any;
+      const res = await client.query({ data: GET_SHOP_DATA });
+      const resBody = res?.body as any;
 
-    if (!resBody?.data?.shop) {
-      console.warn(`Missing shop data on ${session.shop}`);
-    } else {
-      const shopData = resBody.data.shop;
-      console.log("Got shops data", shopData);
+      if (!resBody?.data?.shop) {
+        console.warn(`Missing shop data on ${session.shop}`);
+      } else {
+        const shopData = resBody.data.shop;
+        console.log("Got shops data", shopData);
 
-      await shops.updateShop({
-        shop: session.shop,
-        shopData: {
-          create: shopData,
-        },
-      });
+        await shops.updateShop({
+          shop: session.shop,
+          shopData: {
+            create: shopData,
+          },
+        });
+      }
+    } catch (error) {
+      console.log(`Failed to fetch shop data: ${error}`);
     }
   }
 }

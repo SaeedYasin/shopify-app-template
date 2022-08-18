@@ -1,19 +1,40 @@
 import {
+  ActionList,
   Card,
-  Page,
-  Layout,
-  TextContainer,
-  Image,
-  Stack,
-  Link,
   Heading,
+  Image,
+  Layout,
+  Page,
+  Stack,
+  TextContainer,
 } from "@shopify/polaris";
-
+import { useNavigate } from "react-router-dom";
 import trophyImgUrl from "../assets/home-trophy.png";
+import { ProductsCard } from "../components/ProductsCard.js";
+// import analytics from "../lib/segment/index.js";
+import Link from "../router/Link.jsx";
 
-import { ProductsCard } from "./ProductsCard";
+export default function HomePage() {
+  // Example tracking
+  // analytics.page({
+  //   userId: "testshopify.myshopify.com",
+  //   name: "Home",
+  //   type: "page",
+  // });
+  const navigate = useNavigate();
+  const pagesLinks = [
+    {
+      content: "Page Index Example",
+      helpText: "Page Index route",
+      onAction: () => navigate("/pages"),
+    },
+    {
+      content: "Page Generic Example",
+      helpText: "Page Generic route",
+      onAction: () => navigate("/pages/general"),
+    },
+  ];
 
-export function HomePage() {
   return (
     <Page fullWidth>
       <Layout>
@@ -47,10 +68,7 @@ export function HomePage() {
                     </Link>{" "}
                     UI library and components.
                   </p>
-                  <p>
-                    Ready to go? Start populating your app with some sample
-                    products to view and test in your store.{" "}
-                  </p>
+
                   <p>
                     Learn more about building out your app in{" "}
                     <Link
@@ -77,6 +95,11 @@ export function HomePage() {
         </Layout.Section>
         <Layout.Section secondary>
           <ProductsCard />
+        </Layout.Section>
+        <Layout.Section fullWidth>
+          <Card>
+            <ActionList actionRole="menuitem" items={pagesLinks} />
+          </Card>
         </Layout.Section>
       </Layout>
     </Page>

@@ -13,7 +13,7 @@ async function storeCallback(session: SessionInterface) {
   const { error } = await tryCatch(async () => {
     return await prisma.session.upsert({
       where: {
-        shop: session.shop,
+        id: session.id,
       },
       update: {
         id: session.id,
@@ -62,7 +62,7 @@ async function deleteCallback(id: string) {
 async function deleteSession(shop: string) {
   console.log(`deleteSession called with shop ${shop}`);
   const { error } = await tryCatch(async () => {
-    return await prisma.session.delete({
+    return await prisma.session.deleteMany({
       where: {
         shop,
       },

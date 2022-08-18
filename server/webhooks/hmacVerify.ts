@@ -11,10 +11,10 @@ export const hmacVerify = (req, res, next) => {
     const hmac = req.headers["x-shopify-hmac-sha256"];
 
     if (Shopify.Utils.safeCompare(generateHash, hmac)) {
-      console.log("HMAC successfully verified for webhook route.");
+      console.log("HMAC successfully verified.");
       next();
     } else {
-      console.log("Shopify hmac verification for webhook failed, aborting.");
+      console.log("Shopify hmac verification failed, aborting.");
       return res.status(401).send();
     }
   } catch (error) {

@@ -9,9 +9,13 @@ import "dotenv/config";
 import shops from "./prisma/database/shops.js";
 import sessions from "./prisma/database/sessions.js";
 
-// Middleware
+// Middleware and Routes
 import applyAuthMiddleware from "./middleware/auth.js";
 import verifyRequest from "./middleware/verify-request.js";
+import loadSession from "./middleware/load-session.js";
+import billingRoutes from "./routes/billing/index.js";
+import productRoutes from "./routes/products.js";
+import shopRoutes from "./routes/shop.js";
 
 // Webhooks
 import gdprRoutes from "./webhooks/gdprRoutes.js";
@@ -50,18 +54,21 @@ Shopify.Webhooks.Registry.addHandlers({
   },
   CUSTOMERS_DATA_REQUEST: {
     path: "/gdpr/customers_data_request",
-    webhookHandler: async (topic, shop, body) =>
-      await gdpr.customerDataRequest(topic, shop, body),
+    webhookHandler: async (topic, shop, body) => {
+      await gdpr.customerDataRequest(topic, shop, body);
+    },
   },
   CUSTOMERS_REDACT: {
     path: "/gdpr/customers_redact",
-    webhookHandler: async (topic, shop, body) =>
-      await gdpr.customerRedact(topic, shop, body),
+    webhookHandler: async (topic, shop, body) => {
+      await gdpr.customerRedact(topic, shop, body);
+    },
   },
   SHOP_REDACT: {
     path: "/gdpr/shop_redact",
-    webhookHandler: async (topic, shop, body) =>
-      await gdpr.shopRedact(topic, shop, body),
+    webhookHandler: async (topic, shop, body) => {
+      await gdpr.shopRedact(topic, shop, body);
+    },
   },
 });
 
@@ -75,7 +82,6 @@ export async function createServer(
   const app = express();
   app.set("top-level-oauth-cookie", TOP_LEVEL_OAUTH_COOKIE);
   app.set("use-online-tokens", USE_ONLINE_TOKENS);
-
   app.use(cookieParser(Shopify.Context.API_SECRET_KEY));
 
   applyAuthMiddleware(app);
@@ -92,16 +98,6 @@ export async function createServer(
     }
   });
 
-  app.get("/products-count", verifyRequest(app), async (req, res) => {
-    const session = await Shopify.Utils.loadCurrentSession(req, res, true);
-    const { Product } = await import(
-      `@shopify/shopify-api/dist/rest-resources/${Shopify.Context.API_VERSION}/index.js`
-    );
-
-    const countData = await Product.count({ session });
-    res.status(200).send(countData);
-  });
-
   app.post("/graphql", verifyRequest(app), async (req, res) => {
     try {
       const response = await Shopify.Utils.graphqlProxy(req, res);
@@ -112,7 +108,15 @@ export async function createServer(
   });
 
   app.use(express.json());
+  app.use("/api/products", verifyRequest(app), loadSession(app), productRoutes);
+  app.use("/api/shop", verifyRequest(app), loadSession(app), shopRoutes);
   app.use("/gdpr", hmacVerify, gdprRoutes);
+  billingRoutes(app);
+
+  // Reply to health check to let server know we are ready
+  app.use("/health", (req, res) => {
+    res.status(200).send();
+  });
 
   app.use((req, res, next) => {
     const shop = req.query.shop;
@@ -159,7 +163,7 @@ export async function createServer(
             port: 64999,
             clientPort: 64999,
           },
-          middlewareMode: true,
+          middlewareMode: "html",
         },
       })
     );
@@ -175,7 +179,8 @@ export async function createServer(
     app.use(compression());
     app.use(serveStatic(resolve("dist/client")));
     app.use("/*", (req, res, next) => {
-      // Client-side routing will pick up on the correct route to render, so we always render the index here
+      // Client-side routing will pick up on the correct route to render,
+      // so we always render the index here
       res
         .status(200)
         .set("Content-Type", "text/html")

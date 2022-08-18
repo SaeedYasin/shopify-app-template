@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   Card,
   Heading,
@@ -7,10 +8,11 @@ import {
   TextStyle,
   Button,
 } from "@shopify/polaris";
-import { Toast, useAppBridge } from "@shopify/app-bridge-react";
-import { gql, useMutation } from "@apollo/client";
+import { Toast } from "@shopify/app-bridge-react";
+import { useGraphQLClient } from "../providers/GraphQLProvider";
+import { gql } from "graphql-request";
 
-import { userLoggedInFetch } from "../App";
+import { userLoggedInFetch } from "../lib/shopify/helpers.js";
 
 const PRODUCTS_QUERY = gql`
   mutation populateProduct($input: ProductInput!) {
@@ -22,25 +24,72 @@ const PRODUCTS_QUERY = gql`
   }
 `;
 
+function useProductCount() {
+  const fetch = userLoggedInFetch();
+  return useQuery(["api", "products", "count"], async () => {
+    const { count } = await fetch("/api/products/count").then((res) =>
+      res.json()
+    );
+    return count as number;
+  });
+}
+
+function useProductCreate(noOfProducts = 2, showToast: () => void) {
+  const queryClient = useQueryClient();
+  const gqlClient = useGraphQLClient();
+  return useMutation(
+    ["api", "product"],
+    async () => {
+      await Promise.all(
+        Array.from({ length: noOfProducts }).map(() =>
+          gqlClient.request(PRODUCTS_QUERY, {
+            input: {
+              title: randomTitle(),
+            },
+          })
+        )
+      );
+    },
+    {
+      onMutate: async () => {
+        await queryClient.cancelQueries(["api", "products", "count"]);
+        const previousCount: number = +queryClient.getQueryData([
+          "api",
+          "products",
+          "count",
+        ]);
+        queryClient.setQueryData(
+          ["api", "products", "count"],
+          () => previousCount + 2
+        );
+        return { previousCount };
+      },
+      onError: (error, newCount, context) => {
+        queryClient.setQueryData(
+          ["api", "products", "count"],
+          context.previousCount
+        );
+      },
+      onSettled: () => {
+        queryClient.invalidateQueries(["api", "products", "count"]);
+      },
+      onSuccess: async () => {
+        await queryClient.invalidateQueries(["api", "products", "count"]);
+        showToast();
+      },
+    }
+  );
+}
+
 export function ProductsCard() {
-  const [populateProduct, { loading }] = useMutation(PRODUCTS_QUERY);
-  const [productCount, setProductCount] = useState(0);
   const [hasResults, setHasResults] = useState(false);
-
-  const app = useAppBridge();
-  const fetch = userLoggedInFetch(app);
-  const updateProductCount = useCallback(async () => {
-    const { count } = await fetch("/products-count").then((res) => res.json());
-    setProductCount(count);
-  }, []);
-
-  useEffect(() => {
-    updateProductCount();
-  }, [updateProductCount]);
+  const showToast = () => setHasResults(true);
+  const { mutate } = useProductCreate(2, showToast);
+  const { data: count, isLoading, error } = useProductCount();
 
   const toastMarkup = hasResults && (
     <Toast
-      content="5 products created!"
+      content="2 products created!"
       onDismiss={() => setHasResults(false)}
     />
   );
@@ -57,30 +106,15 @@ export function ProductsCard() {
           <Heading element="h4">
             TOTAL PRODUCTS
             <DisplayText size="medium">
-              <TextStyle variation="strong">{productCount}</TextStyle>
+              <TextStyle variation="strong">
+                {isLoading && ".."}
+                {error && "??"}
+                {!isLoading && count}
+              </TextStyle>
             </DisplayText>
           </Heading>
-          <Button
-            primary
-            loading={loading}
-            onClick={() => {
-              Promise.all(
-                Array.from({ length: 5 }).map(() =>
-                  populateProduct({
-                    variables: {
-                      input: {
-                        title: randomTitle(),
-                      },
-                    },
-                  })
-                )
-              ).then(() => {
-                updateProductCount();
-                setHasResults(true);
-              });
-            }}
-          >
-            Populate 5 products
+          <Button outline loading={isLoading} onClick={mutate}>
+            Populate 2 products
           </Button>
         </TextContainer>
       </Card>

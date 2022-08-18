@@ -54,10 +54,17 @@ Install and start using the app by opening provided URL in your browser: _https:
 
 ## Deployment
 
-- Deploy to any hosting service and configure your env variables on it and get its public URL.
-- Make sure to update your App URL and allowed redirect_uri in shopify partners dashboard.
-- Then using https://your-app-domain.com/login?shop=your-shop-name.myshopify.com you can install the app.
-- Keep in mind running `shopify app serve` will automatically override App URL with ngrok URL in partners dashboard.
+- Create a SECOND public app in your Shopify partner account. As App url and allowed redirect urls simply add https://localhost/ for now. It's important to have two apps, one created previously for development and a new one which will be your production app. I would suggest to call them differently, I simply use the same name and add "(development)" in the name of the one I use in development.
+- Deploy to any hosting service and configure your env variables on it (from the production app we just created) and get its public URL.
+- Make sure to update your App URL and allowed redirect_uri in shopify partners dashboard for our production app.
+- Back to your Shopify Partner Admin, go to your newly created app (the production one) and in your app setup, paste the url from your hosting service in the App url (e.g https://your-app-domain.com/), and in the Allowed redirection URL(s) add the same url from heroku with the suffix /auth/token and auth/callback. e.g. https://your-app-domain.com/auth/token and https://your-app-domain.com/auth/callback. Add your gdpr routes as well i-e https://your-app-domain.com/gdpr/customers_data_request, https://your-app-domain.com/gdpr/customers_redact, https://your-app-domain.com/gdpr/shop_redact.
+- Then using https://your-app-domain.com/login?shop=your-shop-name.myshopify.com you can install the app to test it out.
+
+Every time you work on your development app, you can just follow the workflow described above, and when you are ready to push your changes to production, you will simply need to commit and push your changes to Github as normal, and your hosting service maybe can pick up these new changes and push to your app and deploy the new changes to your hosted app.
+
+This means, one code base but 2 apps, this is the most common workflow used by App Developers. 🎉
+
+Thanks to [Jonathan Giardino](https://github.com/jonathangiardino/shopify-app-starter) shopify app starter template for many of the ideas and code samples used in this template.
 
 ## License
 
