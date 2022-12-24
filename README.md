@@ -64,7 +64,7 @@ Every time you work on your development app, you can just follow the workflow de
 
 This means, one code base but 2 apps, this is the most common workflow used by App Developers. 🎉
 
-Thanks to [Jonathan Giardino](https://github.com/jonathangiardino/shopify-app-starter) shopify app starter template for many of the ideas and code samples used in this template.
+Thanks to [kanzitelli](https://github.com/kanzitelli/shopify-app-template-typescript) and [Jonathan Giardino](https://github.com/jonathangiardino/shopify-app-starter) shopify app starter template for many of the ideas and code samples used in this template.
 
 ## License
 
