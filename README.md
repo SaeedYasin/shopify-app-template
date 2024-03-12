@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE.md)
 
 > **Warning**
-> This is an old CLI2.0 template and is longer being maintained.
+> This is an old CLI2.0 template and is no longer being maintained.
 > New template with CLI3.0 can be found here, _https://github.com/SaeedYasin/shopify-app-template-node_
 
 This is a sample app (**with TypeScript**) to help developers bootstrap their Shopify app development.
